@@ -149,8 +149,13 @@
     </div>
     <div style="display:flex;gap:0.5rem;margin-top:0.65rem;">
       <button id="auditionBtn" style="flex:1;">&#9654; Play Segment</button>
-      <button id="exportBtn" class="primary" style="flex:1;">Export JSON</button>
+      <button id="exportBtn" style="flex:1;">Export JSON</button>
     </div>
+    <div style="display:flex;gap:0.5rem;margin-top:0.45rem;">
+      <button id="saveCloudBtn" class="primary" style="flex:1;display:none;">Save to Cloud</button>
+      <button id="queueRenderBtn" style="flex:1;display:none;">Queue Re-Render</button>
+    </div>
+    <div id="studioStatus" style="font-size:0.75rem;color:var(--muted);margin-top:0.45rem;"></div>
   </aside>
   <audio id="audioEl"></audio>
 
@@ -263,11 +268,47 @@
       if (audioEl.paused) { audioEl.play(); playBtn.textContent = 'Pause'; }
       else { audioEl.pause(); playBtn.textContent = 'Play'; }
     };
-    document.getElementById('auditionBtn').onclick = () => {
+    document.getElementById('auditionBtn').onclick = async () => {
       if (activeSeg < 0 || !segs[activeSeg]) return;
       const s = segs[activeSeg];
-      audioEl.currentTime = s.beginSec;
-      stopAtSec = s.endSec;
+      const st = document.getElementById('studioStatus');
+      audioEl.pause();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+      if (s.dirty || !audioEl.src || audioEl.src.endsWith('/')) {
+        st.textContent = 'Synthesizing live preview...';
+        try {
+          const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ text: s.text, voice: s.voice, rate: s.rate, pitch: s.pitch, volume: s.volume })
+          });
+          if (res.ok) {
+            const blob = await res.blob();
+            const previewAudio = new Audio(URL.createObjectURL(blob));
+            previewAudio.play();
+            st.textContent = `Playing neural preview (${s.voice})`;
+            return;
+          }
+        } catch {}
+        // Instant browser Web Speech API fallback when no live TTS worker is attached
+        if (window.speechSynthesis) {
+          const u = new SpeechSynthesisUtterance(s.text);
+          const pctRate = 1 + parseNum(s.rate) / 100;
+          u.rate = Math.max(0.5, Math.min(2.0, pctRate));
+          u.pitch = Math.max(0.5, Math.min(1.8, 1 + parseNum(s.pitch) / 60));
+          u.volume = Math.max(0.1, Math.min(1.0, 1 + parseNum(s.volume) / 100));
+          const voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+          if (voices.length) u.voice = voices[Math.abs(s.voice.length) % voices.length];
+          window.speechSynthesis.speak(u);
+          st.textContent = `Live preview (${s.voice}, rate ${s.rate}, pitch ${s.pitch}) — Save & Re-render to bake into .m4a`;
+          return;
+        }
+      }
+
+      st.textContent = '';
+      audioEl.currentTime = s.beginSec || 0;
+      stopAtSec = s.endSec || null;
       audioEl.play();
       playBtn.textContent = 'Pause';
     };
@@ -287,28 +328,29 @@
         const key = id.replace('f','').toLowerCase();
         segs[activeSeg][key] = e.target.value;
         segs[activeSeg].confidence = 'manual';
+        segs[activeSeg].dirty = true;
         bookData.chapters[curCh].segments[activeSeg][key] = e.target.value;
       };
     });
     document.getElementById('fRate').oninput = (e) => {
       const val = fmtPct(Number(e.target.value));
       document.getElementById('fRateVal').textContent = val;
-      if (activeSeg >= 0 && segs[activeSeg]) { segs[activeSeg].rate = val; bookData.chapters[curCh].segments[activeSeg].rate = val; }
+      if (activeSeg >= 0 && segs[activeSeg]) { segs[activeSeg].rate = val; segs[activeSeg].dirty = true; bookData.chapters[curCh].segments[activeSeg].rate = val; }
     };
     document.getElementById('fPitch').oninput = (e) => {
       const val = fmtHz(Number(e.target.value));
       document.getElementById('fPitchVal').textContent = val;
-      if (activeSeg >= 0 && segs[activeSeg]) { segs[activeSeg].pitch = val; bookData.chapters[curCh].segments[activeSeg].pitch = val; }
+      if (activeSeg >= 0 && segs[activeSeg]) { segs[activeSeg].pitch = val; segs[activeSeg].dirty = true; bookData.chapters[curCh].segments[activeSeg].pitch = val; }
     };
     document.getElementById('fVolume').oninput = (e) => {
       const val = fmtPct(Number(e.target.value));
       document.getElementById('fVolumeVal').textContent = val;
-      if (activeSeg >= 0 && segs[activeSeg]) { segs[activeSeg].volume = val; bookData.chapters[curCh].segments[activeSeg].volume = val; }
+      if (activeSeg >= 0 && segs[activeSeg]) { segs[activeSeg].volume = val; segs[activeSeg].dirty = true; bookData.chapters[curCh].segments[activeSeg].volume = val; }
     };
     document.getElementById('fEmotion').onchange = (e) => {
       if (activeSeg < 0 || !segs[activeSeg]) return;
       const emo = e.target.value, p = EMO_PRESETS[emo];
-      segs[activeSeg].emotion = emo;
+      segs[activeSeg].emotion = emo; segs[activeSeg].dirty = true;
       segs[activeSeg].rate = p.rate; segs[activeSeg].pitch = p.pitch; segs[activeSeg].volume = p.volume;
       Object.assign(bookData.chapters[curCh].segments[activeSeg], {emotion:emo, ...p});
       populateInspector(activeSeg);
@@ -325,16 +367,48 @@
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${slug}-cast_script.json`; a.click();
     };
 
-    fetch(`${baseDir}book.json`).then(r => r.json()).then(d => {
+    async function initBook() {
+      let d = null;
+      try {
+        const apiRes = await fetch(`/api/books/${encodeURIComponent(slug)}`);
+        if (apiRes.ok) d = await apiRes.json();
+      } catch {}
+      if (!d) {
+        d = await fetch(`${baseDir}book.json`).then(r => r.json());
+      }
       bookData = d;
       document.title = `${d.title} — Opus Library`;
       document.getElementById('bookTitle').textContent = d.title;
+      if (d.canEdit) {
+        document.getElementById('saveCloudBtn').style.display = 'inline-block';
+        document.getElementById('queueRenderBtn').style.display = 'inline-block';
+      }
       const sel = document.getElementById('chapterSelect');
       d.chapters.forEach((c, i) => {
         const o = document.createElement('option'); o.value = i; o.textContent = c.title; sel.appendChild(o);
       });
       loadChapter(0);
-    });
+    }
+
+    document.getElementById('saveCloudBtn').onclick = async () => {
+      const st = document.getElementById('studioStatus');
+      st.textContent = 'Saving to Cloudflare D1...';
+      const res = await fetch(`/api/books/${encodeURIComponent(slug)}`, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(bookData)
+      });
+      st.textContent = res.ok ? 'Saved to Cloudflare D1!' : 'Save failed.';
+    };
+
+    document.getElementById('queueRenderBtn').onclick = async () => {
+      const st = document.getElementById('studioStatus');
+      const res = await fetch(`/api/books/${encodeURIComponent(slug)}/render`, { method: 'POST' });
+      const d = await res.json();
+      st.textContent = res.ok ? `Render job queued (${d.jobId})` : (d.error || 'Queue failed');
+    };
+
+    initBook();
   </script>
 </body>
 </html>

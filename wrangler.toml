@@ -1,0 +1,12 @@
+name = "read-opuslibrary"
+compatibility_date = "2026-11-01"
+pages_build_output_dir = "docs"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "opuslibrary-db"
+database_id = "REPLACE_WITH_D1_ID"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "opuslibrary-media"
