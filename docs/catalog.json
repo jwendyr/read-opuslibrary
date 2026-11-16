@@ -1,0 +1,29 @@
+{
+  "siteTitle": "Opus Library — Read-Along Books",
+  "books": [
+    {
+      "slug": "christmas-carol-2026",
+      "title": "A Christmas Carol",
+      "subtitle": "2026 Modern All-Ages Edition",
+      "author": "Charles Dickens",
+      "chapters": 5,
+      "words": 28721,
+      "features": ["Multi-Voice Cast", "Ambiance & SFX", "Live Cast Editor", "Word-by-Word Sync"],
+      "cover": "books/christmas-carol-2026/cover.jpg",
+      "epubUrl": "https://github.com/jwendyr/christmas-carol-2026/raw/main/dist/christmas-carol-2026-word-by-word.epub",
+      "repoUrl": "https://github.com/jwendyr/christmas-carol-2026"
+    },
+    {
+      "slug": "alice-in-wonderland-2026",
+      "title": "Alice’s Adventures in Wonderland",
+      "subtitle": "2026 Modern All-Ages Edition",
+      "author": "Lewis Carroll",
+      "chapters": 12,
+      "words": 26462,
+      "features": ["16-Voice Cast", "12 Etching Plates", "Word-by-Word Sync"],
+      "cover": "books/alice-in-wonderland-2026/cover.jpg",
+      "epubUrl": "https://github.com/jwendyr/alice-in-wonderland-2026/raw/main/dist/alice-in-wonderland-2026-word-by-word.epub",
+      "repoUrl": "https://github.com/jwendyr/alice-in-wonderland-2026"
+    }
+  ]
+}
