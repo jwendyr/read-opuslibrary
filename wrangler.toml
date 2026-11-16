@@ -5,7 +5,7 @@ pages_build_output_dir = "docs"
 [[d1_databases]]
 binding = "DB"
 database_name = "opuslibrary-db"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "63c8fabe-3b02-4f9e-987a-62dae18bc202"
 
 [[r2_buckets]]
 binding = "BUCKET"
