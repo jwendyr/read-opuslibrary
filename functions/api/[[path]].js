@@ -249,8 +249,19 @@ export async function onRequest(context) {
     const slug = decodeURIComponent(bookMatch[1]);
     const isRender = Boolean(bookMatch[2]);
     const row = await env.DB.prepare('SELECT * FROM books WHERE slug = ?').bind(slug).first();
-    if (!row) return json({ error: 'Book not found.' }, 404);
     const user = await getCurrentUser(request, env);
+
+    if (!row && !isRender && method === 'GET') {
+      try {
+        const bRes = await env.ASSETS.fetch(new Request(`${url.origin}/books/${encodeURIComponent(slug)}/book.json`));
+        if (bRes.ok) {
+          const bjson = await bRes.json();
+          return json({ ...bjson, slug, status: 'ready', canEdit: false });
+        }
+      } catch {}
+      return json({ error: 'Book not found.' }, 404);
+    }
+    if (!row) return json({ error: 'Book not found.' }, 404);
 
     if (!isRender && method === 'GET') {
       if (!row.is_public && (!user || user.id !== row.owner_id)) {
