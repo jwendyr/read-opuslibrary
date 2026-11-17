@@ -32,6 +32,8 @@
       <input id="bTitle" placeholder="e.g. The Little Prince"/>
       <label>Author</label>
       <input id="bAuthor" placeholder="e.g. Antoine de Saint-Exupery"/>
+      <label>Cover Image .jpg / .png (Optional)</label>
+      <input id="bCover" type="file" accept="image/jpeg,image/png"/>
       <label>Upload .txt / .md (Optional)</label>
       <input id="bFile" type="file" accept=".txt,.md"/>
       <label>Book Text</label>
@@ -67,6 +69,15 @@
       });
       const data = await res.json();
       if (!res.ok) { msg.textContent = data.error || 'Failed to create book (sign in first).'; return; }
+      const coverFile = document.getElementById('bCover').files[0];
+      if (coverFile) {
+        msg.textContent = 'Uploading cover to Cloudflare R2...';
+        await fetch(`/api/books/${encodeURIComponent(data.slug)}/cover`, {
+          method: 'POST',
+          headers: {'Content-Type': coverFile.type || 'image/jpeg'},
+          body: coverFile
+        });
+      }
       location.href = `reader.html?book=${encodeURIComponent(data.slug)}`;
     };
   </script>

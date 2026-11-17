@@ -21,7 +21,11 @@ export async function onRequestGet(context) {
     } catch {}
   }
 
-  const all = [...dbBooks, ...staticBooks];
+  const q = (new URL(request.url).searchParams.get('q') || '').trim().toLowerCase();
+  const combined = [...dbBooks, ...staticBooks];
+  const all = q
+    ? combined.filter((b) => (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q))
+    : combined;
   const publications = all.map((b) => {
     const coverHref = b.cover ? (b.cover.startsWith('http') ? b.cover : `${origin}/${b.cover}`) : null;
     const epubHref = b.epubUrl ? (b.epubUrl.startsWith('http') ? b.epubUrl : `${origin}/${b.epubUrl}`) : null;

@@ -1,12 +1,26 @@
 // Cloudflare Pages Functions API for Opus Library (Auth, Books, Cast Studio, Render Queue, R2 Media)
 
-const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', ...CORS_HEADERS };
 
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...JSON_HEADERS, ...extraHeaders },
   });
+}
+
+async function parseJson(request) {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
 }
 
 async function hashPassword(password, saltHex) {
@@ -132,13 +146,19 @@ export async function onRequest(context) {
   const path = '/' + (params.path ? (Array.isArray(params.path) ? params.path.join('/') : params.path) : '');
   const method = request.method;
 
+  if (method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   if (!env.DB) {
     return json({ error: 'Cloudflare D1 binding (DB) is not configured yet.' }, 503);
   }
 
   // Auth: Register
   if (path === '/auth/register' && method === 'POST') {
-    const { email, name, password } = await request.json();
+    const body = await parseJson(request);
+    if (!body) return json({ error: 'Invalid JSON body.' }, 400);
+    const { email, name, password } = body;
     if (!email || !password || password.length < 6) {
       return json({ error: 'Valid email and password (min 6 chars) required.' }, 400);
     }
@@ -167,7 +187,9 @@ export async function onRequest(context) {
 
   // Auth: Login
   if (path === '/auth/login' && method === 'POST') {
-    const { email, password } = await request.json();
+    const body = await parseJson(request);
+    if (!body) return json({ error: 'Invalid JSON body.' }, 400);
+    const { email, password } = body;
     if (!email || !password) return json({ error: 'Email and password required.' }, 400);
     const normEmail = email.trim().toLowerCase();
     const user = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(normEmail).first();
@@ -222,7 +244,9 @@ export async function onRequest(context) {
   if (path === '/books' && method === 'POST') {
     const user = await getCurrentUser(request, env);
     if (!user) return json({ error: 'Please sign in to create a book.' }, 401);
-    const { title, author, text, isPublic } = await request.json();
+    const body = await parseJson(request);
+    if (!body) return json({ error: 'Invalid JSON body.' }, 400);
+    const { title, author, text, isPublic } = body;
     if (!title || !text || text.trim().length < 20) {
       return json({ error: 'Title and book text (min 20 chars) are required.' }, 400);
     }
@@ -243,15 +267,93 @@ export async function onRequest(context) {
     return json({ slug, id, chapters: parsed.chaptersCount, words: parsed.wordsCount }, 201);
   }
 
-  // Books: Get / Update / Queue Render
-  const bookMatch = path.match(/^\/books\/([^/]+)(\/render)?$/);
+  // R2 Media Serve: GET /api/media/<key>
+  if (path.startsWith('/media/') && method === 'GET') {
+    if (!env.BUCKET) return json({ error: 'R2 bucket not bound.' }, 503);
+    const key = decodeURIComponent(path.slice('/media/'.length));
+    const obj = await env.BUCKET.get(key);
+    if (!obj) return json({ error: 'Media not found.' }, 404);
+    const headers = new Headers(CORS_HEADERS);
+    obj.writeHttpMetadata(headers);
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', key.endsWith('.epub') ? 'application/epub+zip' : key.endsWith('.m4a') ? 'audio/mp4' : 'image/jpeg');
+    }
+    headers.set('Cache-Control', 'public, max-age=3600');
+    return new Response(obj.body, { headers });
+  }
+
+  // Live Neural TTS Proxy: POST /api/tts (proxies to env.TTS_BACKEND_URL if configured)
+  if (path === '/tts' && method === 'POST') {
+    if (!env.TTS_BACKEND_URL) {
+      return json({ error: 'No live neural TTS backend configured (set TTS_BACKEND_URL).' }, 503);
+    }
+    const body = await parseJson(request);
+    if (!body || !body.text) return json({ error: 'Invalid TTS payload.' }, 400);
+    const upstream = await fetch(env.TTS_BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: { 'Content-Type': upstream.headers.get('Content-Type') || 'audio/mpeg', ...CORS_HEADERS },
+    });
+  }
+
+  // Render Worker API (Bearer WORKER_SECRET)
+  if (path.startsWith('/worker/')) {
+    const auth = request.headers.get('Authorization') || '';
+    if (!env.WORKER_SECRET || auth !== `Bearer ${env.WORKER_SECRET}`) {
+      return json({ error: 'Unauthorized worker.' }, 401);
+    }
+    if (path === '/worker/next' && method === 'GET') {
+      const job = await env.DB.prepare(
+        `SELECT r.id AS jobId, r.book_id AS bookId, b.slug, b.title, b.author, b.book_json AS bookJson
+         FROM render_jobs r JOIN books b ON r.book_id = b.id
+         WHERE r.status = 'queued' ORDER BY r.created_at ASC LIMIT 1`
+      ).first();
+      if (!job) return json({ job: null });
+      await env.DB.prepare('UPDATE render_jobs SET status = ?, updated_at = ? WHERE id = ?')
+        .bind('processing', new Date().toISOString(), job.jobId).run();
+      return json({ job: { ...job, bookJson: JSON.parse(job.bookJson) } });
+    }
+    if (path === '/worker/upload' && method === 'POST') {
+      if (!env.BUCKET) return json({ error: 'R2 bucket not bound.' }, 503);
+      const key = url.searchParams.get('key');
+      if (!key) return json({ error: 'Missing key query param.' }, 400);
+      await env.BUCKET.put(key, request.body, {
+        httpMetadata: { contentType: request.headers.get('Content-Type') || 'application/octet-stream' },
+      });
+      return json({ ok: true, url: `${url.origin}/api/media/${key}` });
+    }
+    if (path === '/worker/complete' && method === 'POST') {
+      const body = await parseJson(request);
+      if (!body || !body.jobId || !body.bookId) return json({ error: 'Invalid completion payload.' }, 400);
+      const now = new Date().toISOString();
+      await env.DB.prepare('UPDATE render_jobs SET status = ?, log = ?, updated_at = ? WHERE id = ?')
+        .bind(body.status || 'done', body.log || '', now, body.jobId).run();
+      if (body.bookJson) {
+        await env.DB.prepare('UPDATE books SET status = ?, epub_url = ?, book_json = ?, updated_at = ? WHERE id = ?')
+          .bind('ready', body.epubUrl || '', JSON.stringify(body.bookJson), now, body.bookId).run();
+      } else {
+        await env.DB.prepare('UPDATE books SET status = ?, updated_at = ? WHERE id = ?')
+          .bind(body.status === 'error' ? 'error' : 'ready', now, body.bookId).run();
+      }
+      return json({ ok: true });
+    }
+  }
+
+  // Books: Get / Update / Delete / Cover / Queue Render
+  const bookMatch = path.match(/^\/books\/([^/]+)(\/render|\/cover)?$/);
   if (bookMatch) {
     const slug = decodeURIComponent(bookMatch[1]);
-    const isRender = Boolean(bookMatch[2]);
+    const subAction = bookMatch[2] || '';
+    const isRender = subAction === '/render';
+    const isCover = subAction === '/cover';
     const row = await env.DB.prepare('SELECT * FROM books WHERE slug = ?').bind(slug).first();
     const user = await getCurrentUser(request, env);
 
-    if (!row && !isRender && method === 'GET') {
+    if (!row && !subAction && method === 'GET') {
       try {
         const bRes = await env.ASSETS.fetch(new Request(`${url.origin}/books/${encodeURIComponent(slug)}/book.json`));
         if (bRes.ok) {
@@ -263,21 +365,42 @@ export async function onRequest(context) {
     }
     if (!row) return json({ error: 'Book not found.' }, 404);
 
-    if (!isRender && method === 'GET') {
+    if (!subAction && method === 'GET') {
       if (!row.is_public && (!user || user.id !== row.owner_id)) {
         return json({ error: 'Unauthorized' }, 403);
       }
       const bjson = JSON.parse(row.book_json);
-      return json({ ...bjson, slug: row.slug, ownerId: row.owner_id, status: row.status, canEdit: Boolean(user && user.id === row.owner_id) });
+      return json({ ...bjson, slug: row.slug, ownerId: row.owner_id, status: row.status, epubUrl: row.epub_url, coverUrl: row.cover_url, canEdit: Boolean(user && user.id === row.owner_id) });
     }
 
-    if (!isRender && method === 'PUT') {
+    if (!subAction && method === 'PUT') {
       if (!user || user.id !== row.owner_id) return json({ error: 'Only the book owner can save edits.' }, 403);
-      const body = await request.json();
+      const body = await parseJson(request);
+      if (!body) return json({ error: 'Invalid JSON body.' }, 400);
       await env.DB.prepare('UPDATE books SET book_json = ?, updated_at = ? WHERE id = ?')
         .bind(JSON.stringify(body), new Date().toISOString(), row.id)
         .run();
       return json({ ok: true });
+    }
+
+    if (!subAction && method === 'DELETE') {
+      if (!user || user.id !== row.owner_id) return json({ error: 'Only the book owner can delete this book.' }, 403);
+      await env.DB.prepare('DELETE FROM render_jobs WHERE book_id = ?').bind(row.id).run();
+      await env.DB.prepare('DELETE FROM books WHERE id = ?').bind(row.id).run();
+      return json({ ok: true, deleted: slug });
+    }
+
+    if (isCover && method === 'POST') {
+      if (!user || user.id !== row.owner_id) return json({ error: 'Only the book owner can upload a cover.' }, 403);
+      if (!env.BUCKET) return json({ error: 'R2 bucket not bound.' }, 503);
+      const ct = request.headers.get('Content-Type') || 'image/jpeg';
+      const ext = ct.includes('png') ? 'png' : 'jpg';
+      const key = `covers/${slug}.${ext}`;
+      await env.BUCKET.put(key, request.body, { httpMetadata: { contentType: ct } });
+      const coverUrl = `/api/media/${key}`;
+      await env.DB.prepare('UPDATE books SET cover_url = ?, updated_at = ? WHERE id = ?')
+        .bind(coverUrl, new Date().toISOString(), row.id).run();
+      return json({ ok: true, coverUrl });
     }
 
     if (isRender && method === 'POST') {

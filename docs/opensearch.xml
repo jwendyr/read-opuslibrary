@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>Opus Library</ShortName>
+  <Description>Search Opus Library Read-Along Books (OPDS)</Description>
+  <Url type="application/atom+xml;profile=opds-catalog;kind=acquisition" template="https://read.opuslibrary.com/api/opds.xml?q={searchTerms}"/>
+  <Url type="application/opds+json" template="https://read.opuslibrary.com/api/opds.json?q={searchTerms}"/>
+</OpenSearchDescription>

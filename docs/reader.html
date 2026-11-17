@@ -154,6 +154,7 @@
     <div style="display:flex;gap:0.5rem;margin-top:0.45rem;">
       <button id="saveCloudBtn" class="primary" style="flex:1;display:none;">Save to Cloud</button>
       <button id="queueRenderBtn" style="flex:1;display:none;">Queue Re-Render</button>
+      <button id="deleteBookBtn" style="display:none;color:#fca5a5;">Delete</button>
     </div>
     <div id="studioStatus" style="font-size:0.75rem;color:var(--muted);margin-top:0.45rem;"></div>
   </aside>
@@ -382,6 +383,7 @@
       if (d.canEdit) {
         document.getElementById('saveCloudBtn').style.display = 'inline-block';
         document.getElementById('queueRenderBtn').style.display = 'inline-block';
+        document.getElementById('deleteBookBtn').style.display = 'inline-block';
       }
       const sel = document.getElementById('chapterSelect');
       d.chapters.forEach((c, i) => {
@@ -406,6 +408,12 @@
       const res = await fetch(`/api/books/${encodeURIComponent(slug)}/render`, { method: 'POST' });
       const d = await res.json();
       st.textContent = res.ok ? `Render job queued (${d.jobId})` : (d.error || 'Queue failed');
+    };
+
+    document.getElementById('deleteBookBtn').onclick = async () => {
+      if (!confirm('Delete this book permanently?')) return;
+      const res = await fetch(`/api/books/${encodeURIComponent(slug)}`, { method: 'DELETE' });
+      if (res.ok) location.href = 'index.html';
     };
 
     initBook();

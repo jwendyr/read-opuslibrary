@@ -31,7 +31,11 @@ async function getAllPublicBooks(context) {
 }
 
 export async function onRequestGet(context) {
-  const { origin, books } = await getAllPublicBooks(context);
+  const { origin, books: rawBooks } = await getAllPublicBooks(context);
+  const q = (new URL(context.request.url).searchParams.get('q') || '').trim().toLowerCase();
+  const books = q
+    ? rawBooks.filter((b) => (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q))
+    : rawBooks;
   const now = new Date().toISOString();
 
   const entries = books
@@ -61,6 +65,7 @@ export async function onRequestGet(context) {
   <author><name>Opus Library</name><uri>${origin}</uri></author>
   <link rel="self" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="${origin}/opds.xml"/>
   <link rel="start" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="${origin}/opds.xml"/>
+  <link rel="search" type="application/opensearchdescription+xml" href="${origin}/opensearch.xml"/>
   <link rel="alternate" type="application/opds+json" href="${origin}/opds.json"/>
 ${entries}
 </feed>
