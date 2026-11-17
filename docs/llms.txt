@@ -52,3 +52,24 @@ Each chapter in `chapters[]`:
 
 ## 4. EPUB3 Standard
 All downloadable `.epub` files conform to W3C EPUB 3.3 Fixed-Layout (768x1024, pre-paginated) with SMIL 3.0 Media Overlays (`audio/mp4`, `-epub-media-overlay-active`, two-level sentence + word highlighting via `highlight.js`) and pass W3C EPUBCheck 5.1.0 with 0 errors and 0 warnings.
+
+## 5. Automated Test Protocol (Run Before Shipping Any Client)
+1. **OPDS 1.2 & 2.0 + OpenSearch**:
+   - `GET /opds.xml` -> 200, valid Atom XML, `>= 2` `<entry>` items, includes `<link rel="search" ... href=".../opensearch.xml"/>`.
+   - `GET /api/opds.json?q=alice` -> 200, `metadata.numberOfItems == 1`.
+   - `GET /opensearch.xml` -> 200, valid OpenSearchDescription.
+2. **W3C Manifest + Book JSON + Audio**:
+   - `GET /api/w3c/{slug}/manifest.json` -> 200, `conformsTo` includes `https://www.w3.org/TR/epub-33/`, non-empty `readingOrder`.
+   - `GET /api/books/{slug}` -> 200, non-empty `chapters[].words[]` and `segments[]`.
+   - `HEAD /books/{slug}/audio/ch01.m4a` -> 200.
+3. **CORS & Input Validation**:
+   - `OPTIONS /api/books` -> 204 with `Access-Control-Allow-Origin: *`.
+   - `POST /api/auth/login` with invalid JSON `{bad` -> 400 (never 500).
+4. **Auth + Private Book CRUD + Render Queue + Cleanup**:
+   - `POST /api/auth/register` -> 201 + `Set-Cookie: opus_session=...`.
+   - `POST /api/books` with `isPublic: false` -> 201 + `{ slug }`.
+   - `GET /api/books/{slug}` (authenticated owner) -> 200 (`canEdit: true`).
+   - `PUT /api/books/{slug}` -> 200.
+   - `POST /api/books/{slug}/render` -> 202 (`status: "queued"`).
+   - `DELETE /api/books/{slug}` -> 200, followed by `GET /api/books/{slug}` -> 404.
+   - `POST /api/auth/logout` -> 200.

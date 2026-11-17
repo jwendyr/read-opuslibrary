@@ -118,6 +118,18 @@
       </ul>
       <pre>curl -s https://read.opuslibrary.com/opds.json | head -n 25</pre>
     </div>
+
+    <div class="card">
+      <h2>Automated Test Protocol (For AI Agents &amp; CI)</h2>
+      <p style="color:var(--muted);">Any client or AI agent integrating with Opus Library should verify these 4 protocol stages:</p>
+      <ol>
+        <li><strong>OPDS 1.2 / 2.0 &amp; OpenSearch:</strong> <code>GET /opds.xml</code> (200 Atom XML), <code>GET /opensearch.xml</code> (200), <code>GET /api/opds.json?q=alice</code> (200, 1 match).</li>
+        <li><strong>W3C Manifest + Book JSON + Audio:</strong> <code>GET /api/w3c/{slug}/manifest.json</code> (200 <code>application/webpub+json</code>), <code>GET /api/books/{slug}</code> (200), <code>HEAD /books/{slug}/audio/ch01.m4a</code> (200).</li>
+        <li><strong>CORS &amp; Error Guard:</strong> <code>OPTIONS /api/books</code> (204, <code>Access-Control-Allow-Origin: *</code>), malformed JSON to <code>POST /api/auth/login</code> (400).</li>
+        <li><strong>Auth + Private Book CRUD + Cleanup:</strong> Register (201) → Create <code>isPublic: false</code> (201) → Get (200, <code>canEdit: true</code>) → Put (200) → Queue Render (202) → Delete (200) → Get (404) → Logout (200).</li>
+      </ol>
+      <pre>curl -sf https://read.opuslibrary.com/llms.txt | tail -n 25</pre>
+    </div>
   </main>
 </body>
 </html>
