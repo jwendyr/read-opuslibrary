@@ -1,0 +1,55 @@
+# Opus Library — AI Agent & Reader Integration Specification
+Base URL: https://read.opuslibrary.com
+OpenAPI 3.0: https://read.opuslibrary.com/openapi.json
+Human Spec Page: https://read.opuslibrary.com/developers
+
+## 1. Open Ebook Reader Protocols (No Auth Required)
+- OPDS 1.2 (Atom/XML, static): GET https://read.opuslibrary.com/opds.xml
+- OPDS 1.2 (Atom/XML, dynamic D1 + catalog): GET https://read.opuslibrary.com/api/opds.xml
+- OPDS 2.0 (JSON, static): GET https://read.opuslibrary.com/opds.json
+- OPDS 2.0 (JSON, dynamic D1 + catalog): GET https://read.opuslibrary.com/api/opds.json
+- W3C / Readium Web Publication Manifest: GET https://read.opuslibrary.com/api/w3c/{slug}/manifest.json
+- Static Catalog JSON: GET https://read.opuslibrary.com/catalog.json
+
+## 2. REST API Endpoints (Cloudflare Pages Functions + D1)
+- GET  /api/books            -> { "books": [ { slug, title, author, subtitle, chapters, words, cover, epubUrl, status } ] }
+- GET  /api/books/{slug}     -> Full book object { title, author, slug, canEdit, chapters: [ { chapter, title, audio, html, segments[], words[] } ] }
+  (Note: for static catalog books without D1 rows, fetch https://read.opuslibrary.com/books/{slug}/book.json)
+- POST /api/auth/register    -> Body: { email, name, password } -> Sets HttpOnly cookie `opus_session`
+- POST /api/auth/login       -> Body: { email, password } -> Sets HttpOnly cookie `opus_session`
+- POST /api/auth/logout      -> Clears `opus_session`
+- GET  /api/auth/me          -> { user: { id, email, name } | null }
+- POST /api/books            -> Auth required. Body: { title, author, text, isPublic } -> 201 { slug, id, chapters, words }
+- PUT  /api/books/{slug}     -> Owner auth required. Body: full bookJson -> 200 { ok: true }
+- POST /api/books/{slug}/render -> Owner auth required. Queues job in D1 `render_jobs` -> 202 { jobId, status: "queued" }
+
+## 3. Book & Segment JSON Schema
+Each chapter in `chapters[]`:
+{
+  "chapter": "ch01",
+  "title": "Chapter 1: ...",
+  "audio": "audio/ch01.m4a",           // relative to /books/{slug}/ unless absolute URL
+  "html": "<h1>...</h1><p>...</p>",    // wraps segments in <span class='seg-span' id='seg_{i}'> and words in <span id='w00001'>
+  "segments": [
+    {
+      "role": "narrator|scrooge|alice|...",
+      "voice": "en-US-AriaNeural",
+      "emotion": "neutral|cheerful|sad|angry|spooky|whisper|hurried|solemn",
+      "rate": "+0%",
+      "pitch": "+0Hz",
+      "volume": "+0%",
+      "ambiance": "none|cozy_fireplace|winter_wind|spooky_manor|clock_ticking|festive_bells",
+      "sfx": "none|chains_rattle|knocker|bell_chime|door_creak|footsteps|thunder",
+      "confidence": "high|low|manual",
+      "beginSec": 0.0,
+      "endSec": 3.45,
+      "text": "..."
+    }
+  ],
+  "words": [
+    { "id": "w00001", "segIdx": 0, "text": "Chapter", "beginSec": 0.02 }
+  ]
+}
+
+## 4. EPUB3 Standard
+All downloadable `.epub` files conform to W3C EPUB 3.3 Fixed-Layout (768x1024, pre-paginated) with SMIL 3.0 Media Overlays (`audio/mp4`, `-epub-media-overlay-active`, two-level sentence + word highlighting via `highlight.js`) and pass W3C EPUBCheck 5.1.0 with 0 errors and 0 warnings.

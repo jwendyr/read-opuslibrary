@@ -95,6 +95,22 @@
     </div>
 
     <div class="card">
+      <h2>AI-Agent Quick Links &amp; Book JSON Schema</h2>
+      <p style="color:var(--muted);">Point any coding agent or reader client directly to <a class="ep" href="llms.txt"><code>https://read.opuslibrary.com/llms.txt</code></a> (plain-text spec) or <a class="ep" href="openapi.json"><code>https://read.opuslibrary.com/openapi.json</code></a>.</p>
+      <pre>{
+  "chapter": "ch01",
+  "title": "Chapter 1: Marley's Ghost",
+  "audio": "audio/ch01.m4a",
+  "segments": [{
+    "role": "narrator", "voice": "en-US-AriaNeural", "emotion": "neutral",
+    "rate": "+0%", "pitch": "+0Hz", "volume": "+0%",
+    "ambiance": "winter_wind", "sfx": "none", "beginSec": 0.0, "endSec": 2.1, "text": "..."
+  }],
+  "words": [{ "id": "w00001", "segIdx": 0, "text": "Chapter", "beginSec": 0.02 }]
+}</pre>
+    </div>
+
+    <div class="card">
       <h2>How to Subscribe in Ebook Readers</h2>
       <ul>
         <li><strong>Thorium Reader / KOReader / Calibre / Cantook:</strong> Add OPDS catalog URL <code>https://read.opuslibrary.com/opds.xml</code> (or <code>/opds.json</code> for OPDS 2.0).</li>
