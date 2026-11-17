@@ -12,7 +12,9 @@ import time
 import urllib.request
 from pathlib import Path
 
-SKILL_SCRIPTS = Path.home() / ".gemini/config/skills/readalong-book-publisher/scripts"
+_GLOBAL_SKILL_SCRIPTS = Path.home() / ".gemini/config/skills/readalong-book-publisher/scripts"
+_LOCAL_PIPELINE_SCRIPTS = Path(__file__).resolve().parent / "pipeline"
+SKILL_SCRIPTS = _GLOBAL_SKILL_SCRIPTS if _GLOBAL_SKILL_SCRIPTS.exists() else _LOCAL_PIPELINE_SCRIPTS
 
 
 def api_req(base_url: str, secret: str, method: str, path: str, body=None, raw_bytes=None, content_type="application/json"):
