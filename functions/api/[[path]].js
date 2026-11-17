@@ -197,7 +197,7 @@ export async function onRequest(context) {
     return json({ user });
   }
 
-  // Books: List (public + current user's own)
+  // Books: List (public + current user's own + catalog.json)
   if (path === '/books' && method === 'GET') {
     const user = await getCurrentUser(request, env);
     const stmt = user
@@ -210,7 +210,12 @@ export async function onRequest(context) {
            FROM books b JOIN users u ON b.owner_id = u.id WHERE b.is_public = 1 ORDER BY b.created_at DESC`
         );
     const { results } = await stmt.all();
-    return json({ books: results || [] });
+    let staticBooks = [];
+    try {
+      const catRes = await env.ASSETS.fetch(new Request(`${url.origin}/catalog.json`));
+      if (catRes.ok) staticBooks = (await catRes.json()).books || [];
+    } catch {}
+    return json({ books: [...(results || []), ...staticBooks] });
   }
 
   // Books: Create
