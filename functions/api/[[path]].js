@@ -276,5 +276,65 @@ export async function onRequest(context) {
     }
   }
 
+  // W3C / Readium Web Publication Manifest: /api/w3c/:slug/manifest.json
+  const w3cMatch = path.match(/^\/w3c\/([^/]+)\/manifest\.json$/);
+  if (w3cMatch && method === 'GET') {
+    const slug = decodeURIComponent(w3cMatch[1]);
+    const origin = url.origin;
+    let bookData = null;
+    let metaEntry = null;
+
+    const row = await env.DB.prepare('SELECT * FROM books WHERE slug = ? AND is_public = 1').bind(slug).first();
+    if (row) {
+      bookData = JSON.parse(row.book_json);
+      metaEntry = { title: row.title, author: row.author, cover: row.cover_url, epubUrl: row.epub_url };
+    } else {
+      try {
+        const catRes = await env.ASSETS.fetch(new Request(`${origin}/catalog.json`));
+        const cat = catRes.ok ? await catRes.json() : { books: [] };
+        metaEntry = (cat.books || []).find((b) => b.slug === slug);
+        const bRes = await env.ASSETS.fetch(new Request(`${origin}/books/${slug}/book.json`));
+        if (bRes.ok) bookData = await bRes.json();
+      } catch {}
+    }
+
+    if (!bookData) return json({ error: 'Book not found.' }, 404);
+
+    const manifest = {
+      '@context': ['https://readium.org/webpub-manifest/context.jsonld', 'https://www.w3.org/ns/pub-context'],
+      metadata: {
+        '@type': 'http://schema.org/Book',
+        identifier: `urn:opuslibrary:book:${slug}`,
+        title: bookData.title || metaEntry?.title || slug,
+        author: metaEntry?.author || bookData.author || 'Unknown',
+        language: 'en',
+        conformsTo: ['https://www.w3.org/TR/epub-33/', 'https://readium.org/webpub-manifest/'],
+      },
+      links: [
+        { rel: 'self', href: `${origin}/api/w3c/${encodeURIComponent(slug)}/manifest.json`, type: 'application/webpub+json' },
+        { rel: 'alternate', href: `${origin}/reader.html?book=${encodeURIComponent(slug)}`, type: 'text/html' },
+        ...(metaEntry?.epubUrl ? [{ rel: 'http://opds-spec.org/acquisition', href: metaEntry.epubUrl, type: 'application/epub+zip' }] : []),
+      ],
+      readingOrder: (bookData.chapters || []).map((c, idx) => ({
+        href: `${origin}/reader.html?book=${encodeURIComponent(slug)}#ch=${idx + 1}`,
+        title: c.title,
+        type: 'text/html',
+      })),
+      resources: (bookData.chapters || [])
+        .filter((c) => c.audio)
+        .map((c) => ({
+          href: c.audio.startsWith('http') ? c.audio : `${origin}/books/${slug}/${c.audio}`,
+          type: 'audio/mp4',
+        })),
+    };
+
+    return new Response(JSON.stringify(manifest, null, 2), {
+      headers: {
+        'Content-Type': 'application/webpub+json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  }
+
   return json({ error: 'Not found' }, 404);
 }
