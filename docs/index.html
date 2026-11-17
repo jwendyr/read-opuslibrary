@@ -114,7 +114,9 @@
         const res = await fetch('/api/books');
         if (res.ok) dbBooks = (await res.json()).books || [];
       } catch {}
-      allBooks = [...dbBooks, ...(staticCat.books || [])];
+      const merged = new Map();
+      [...dbBooks, ...(staticCat.books || [])].forEach(b => { if (b && b.slug && !merged.has(b.slug)) merged.set(b.slug, b); });
+      allBooks = Array.from(merged.values());
       render(document.getElementById('searchInput').value);
     }
 
