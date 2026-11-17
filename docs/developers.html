@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Opus Library — OPDS, W3C &amp; Reader API Spec</title>
+  <style>
+    :root { --bg:#0b1120; --card:#131c31; --text:#f1f5f9; --muted:#94a3b8; --border:#23314d; --accent:#38bdf8; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.65; }
+    header { border-bottom:1px solid var(--border); background:var(--card); padding:0.9rem 1.5rem; display:flex; align-items:center; justify-content:space-between; }
+    a.btn { color:var(--text); text-decoration:none; border:1px solid var(--border); padding:0.42rem 0.85rem; border-radius:8px; font-size:0.86rem; background:var(--bg); }
+    main { max-width:960px; margin:2rem auto; padding:0 1.25rem 4rem; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.4rem 1.6rem; margin-bottom:1.25rem; }
+    h1 { margin-top:0; font-size:1.75rem; }
+    h2 { margin-top:0; font-size:1.2rem; color:var(--accent); }
+    code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:#090e1a; border:1px solid var(--border); border-radius:8px; }
+    code { padding:0.15rem 0.45rem; font-size:0.86rem; }
+    pre { padding:0.9rem 1rem; overflow-x:auto; font-size:0.84rem; }
+    table { width:100%; border-collapse:collapse; margin-top:0.5rem; font-size:0.9rem; }
+    th, td { text-align:left; padding:0.65rem 0.5rem; border-bottom:1px solid var(--border); vertical-align:top; }
+    th { color:var(--muted); font-size:0.78rem; text-transform:uppercase; }
+    a.ep { color:var(--accent); text-decoration:none; }
+    a.ep:hover { text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="btn" href="index.html">&#8592; Library</a>
+    <strong>OPDS, W3C &amp; Reader API Specification</strong>
+    <a class="btn" href="openapi.json">openapi.json</a>
+  </header>
+  <main>
+    <div class="card">
+      <h1>Connect Any Ebook Reader to Opus Library</h1>
+      <p style="color:var(--muted);">Opus Library exposes standard <strong>OPDS 1.2</strong>, <strong>OPDS 2.0</strong>, <strong>W3C EPUB 3.3 / Web Publication Manifest</strong>, and REST JSON endpoints so any compatible reader app or client can browse, pull, and read books with word-by-word audio synchronization.</p>
+    </div>
+
+    <div class="card">
+      <h2>Catalog &amp; Standards Endpoints</h2>
+      <table>
+        <thead>
+          <tr><th>Standard</th><th>Endpoint</th><th>Content-Type</th><th>Compatible Readers</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>OPDS 1.2</strong></td>
+            <td><a class="ep" href="opds.xml"><code>/opds.xml</code></a></td>
+            <td><code>application/atom+xml;profile=opds-catalog;kind=acquisition</code></td>
+            <td>KOReader, Calibre, PocketBook, Cantook, Moon+ Reader</td>
+          </tr>
+          <tr>
+            <td><strong>OPDS 2.0</strong></td>
+            <td><a class="ep" href="opds.json"><code>/opds.json</code></a></td>
+            <td><code>application/opds+json</code></td>
+            <td>Thorium Reader, Readium-based apps</td>
+          </tr>
+          <tr>
+            <td><strong>W3C / RWPM</strong></td>
+            <td><a class="ep" href="api/w3c/christmas-carol-2026/manifest.json"><code>/api/w3c/{slug}/manifest.json</code></a></td>
+            <td><code>application/webpub+json</code></td>
+            <td>Readium Web, W3C EPUB 3.3 / WebPub clients</td>
+          </tr>
+          <tr>
+            <td><strong>Static Catalog</strong></td>
+            <td><a class="ep" href="catalog.json"><code>/catalog.json</code></a></td>
+            <td><code>application/json</code></td>
+            <td>Custom web clients &amp; scripts</td>
+          </tr>
+          <tr>
+            <td><strong>OpenAPI 3.0</strong></td>
+            <td><a class="ep" href="openapi.json"><code>/openapi.json</code></a></td>
+            <td><code>application/json</code></td>
+            <td>Swagger / OpenAPI codegen</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>REST API Endpoints (Cloudflare Pages Functions + D1)</h2>
+      <table>
+        <thead>
+          <tr><th>Method &amp; Path</th><th>Auth</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>GET /api/books</code></td><td>Public / Cookie</td><td>List all public books (plus owner's private drafts when signed in).</td></tr>
+          <tr><td><code>POST /api/books</code></td><td>Cookie</td><td>Create a new book from title, author, and raw <code>.txt</code>/<code>.md</code> text.</td></tr>
+          <tr><td><code>GET /api/books/{slug}</code></td><td>Public / Owner</td><td>Fetch full book JSON (chapters, segments, word timestamps, audio URLs).</td></tr>
+          <tr><td><code>PUT /api/books/{slug}</code></td><td>Owner</td><td>Save updated Cast, Emotion, Rate/Pitch/Volume, Ambiance &amp; SFX edits to D1.</td></tr>
+          <tr><td><code>POST /api/books/{slug}/render</code></td><td>Owner</td><td>Queue an audio &amp; EPUB3 render job in D1 <code>render_jobs</code>.</td></tr>
+          <tr><td><code>POST /api/auth/register</code> / <code>login</code></td><td>Public</td><td>Create account or sign in (sets <code>HttpOnly</code> session cookie).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>How to Subscribe in Ebook Readers</h2>
+      <ul>
+        <li><strong>Thorium Reader / KOReader / Calibre / Cantook:</strong> Add OPDS catalog URL <code>https://read.opuslibrary.com/opds.xml</code> (or <code>/opds.json</code> for OPDS 2.0).</li>
+        <li><strong>Apple Books (macOS / iOS):</strong> Apple Books does not subscribe to OPDS feeds; download the <code>.epub</code> directly from the Library card or the <code>http://opds-spec.org/acquisition</code> link (EPUB 3.3 Fixed-Layout with SMIL Media Overlays, W3C EPUBCheck 0 errors).</li>
+      </ul>
+      <pre>curl -s https://read.opuslibrary.com/opds.json | head -n 25</pre>
+    </div>
+  </main>
+</body>
+</html>

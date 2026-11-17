@@ -1,0 +1,56 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Opus Library Read-Along & OPDS API",
+    "version": "1.0.0",
+    "description": "Open OPDS 1.2, OPDS 2.0, W3C Web Publication Manifest, and Read-Along Book API hosted on Cloudflare Pages & D1."
+  },
+  "servers": [
+    { "url": "https://read.opuslibrary.com" }
+  ],
+  "paths": {
+    "/opds.xml": {
+      "get": {
+        "summary": "OPDS 1.2 Atom/XML Acquisition Catalog",
+        "responses": {
+          "200": { "description": "OPDS 1.2 Atom feed (application/atom+xml;profile=opds-catalog;kind=acquisition)" }
+        }
+      }
+    },
+    "/opds.json": {
+      "get": {
+        "summary": "OPDS 2.0 JSON Catalog",
+        "responses": {
+          "200": { "description": "OPDS 2.0 JSON feed (application/opds+json)" }
+        }
+      }
+    },
+    "/api/w3c/{slug}/manifest.json": {
+      "get": {
+        "summary": "W3C / Readium Web Publication Manifest for a book",
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Web Publication Manifest (application/webpub+json)" }
+        }
+      }
+    },
+    "/api/books": {
+      "get": { "summary": "List public books (and authenticated user's private books)" },
+      "post": { "summary": "Create a new book (requires session cookie)" }
+    },
+    "/api/books/{slug}": {
+      "get": {
+        "summary": "Get full book JSON, chapters, segments, and word-by-word timestamps",
+        "parameters": [
+          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }
+        ]
+      },
+      "put": { "summary": "Update book Cast, Emotion, Ambiance & SFX script (owner only)" }
+    },
+    "/api/books/{slug}/render": {
+      "post": { "summary": "Queue a render job in Cloudflare D1 render_jobs (owner only)" }
+    }
+  }
+}
