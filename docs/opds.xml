@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opds="http://opds-spec.org/2010/catalog">
+  <id>urn:opuslibrary:catalog</id>
+  <title>Opus Library — Read-Along Books (OPDS 1.2)</title>
+  <updated>2026-11-17T04:41:18Z</updated>
+  <author><name>Opus Library</name><uri>https://read.opuslibrary.com</uri></author>
+  <link rel="self" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="https://read.opuslibrary.com/opds.xml"/>
+  <link rel="start" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="https://read.opuslibrary.com/opds.xml"/>
+  <link rel="alternate" type="application/opds+json" href="https://read.opuslibrary.com/opds.json"/>
+  <entry>
+    <id>urn:opuslibrary:book:christmas-carol-2026</id>
+    <title>A Christmas Carol</title>
+    <author><name>Charles Dickens</name></author>
+    <updated>2026-11-17T04:41:18Z</updated>
+    <summary>2026 Modern All-Ages Edition (5 chapters, 28,721 words)</summary>
+    <link rel="alternate" type="text/html" href="https://read.opuslibrary.com/reader.html?book=christmas-carol-2026"/>
+    <link rel="http://opds-spec.org/image" type="image/jpeg" href="https://read.opuslibrary.com/books/christmas-carol-2026/cover.jpg"/>
+    <link rel="http://opds-spec.org/image/thumbnail" type="image/jpeg" href="https://read.opuslibrary.com/books/christmas-carol-2026/cover.jpg"/>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="https://github.com/jwendyr/christmas-carol-2026/raw/main/dist/christmas-carol-2026-word-by-word.epub"/>
+  </entry>
+  <entry>
+    <id>urn:opuslibrary:book:alice-in-wonderland-2026</id>
+    <title>Alice’s Adventures in Wonderland</title>
+    <author><name>Lewis Carroll</name></author>
+    <updated>2026-11-17T04:41:18Z</updated>
+    <summary>2026 Modern All-Ages Edition (12 chapters, 26,462 words)</summary>
+    <link rel="alternate" type="text/html" href="https://read.opuslibrary.com/reader.html?book=alice-in-wonderland-2026"/>
+    <link rel="http://opds-spec.org/image" type="image/jpeg" href="https://read.opuslibrary.com/books/alice-in-wonderland-2026/cover.jpg"/>
+    <link rel="http://opds-spec.org/image/thumbnail" type="image/jpeg" href="https://read.opuslibrary.com/books/alice-in-wonderland-2026/cover.jpg"/>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="https://github.com/jwendyr/alice-in-wonderland-2026/raw/main/dist/alice-in-wonderland-2026-word-by-word.epub"/>
+  </entry>
+</feed>

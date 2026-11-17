@@ -276,6 +276,16 @@ export async function onRequest(context) {
     }
   }
 
+  // Dynamic OPDS 1.2 & OPDS 2.0 under /api/opds.xml and /api/opds.json (includes D1 public books + catalog.json)
+  if (path === '/opds.xml' && method === 'GET') {
+    const mod = await import('../opds.xml.js');
+    return mod.onRequestGet(context);
+  }
+  if (path === '/opds.json' && method === 'GET') {
+    const mod = await import('../opds.json.js');
+    return mod.onRequestGet(context);
+  }
+
   // W3C / Readium Web Publication Manifest: /api/w3c/:slug/manifest.json
   const w3cMatch = path.match(/^\/w3c\/([^/]+)\/manifest\.json$/);
   if (w3cMatch && method === 'GET') {

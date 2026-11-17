@@ -1,0 +1,92 @@
+{
+  "metadata": {
+    "title": "Opus Library \u2014 Read-Along Books (OPDS 2.0)",
+    "numberOfItems": 2
+  },
+  "links": [
+    {
+      "rel": "self",
+      "href": "https://read.opuslibrary.com/opds.json",
+      "type": "application/opds+json"
+    },
+    {
+      "rel": "alternate",
+      "href": "https://read.opuslibrary.com/opds.xml",
+      "type": "application/atom+xml;profile=opds-catalog;kind=acquisition"
+    }
+  ],
+  "publications": [
+    {
+      "metadata": {
+        "@type": "http://schema.org/Book",
+        "identifier": "urn:opuslibrary:book:christmas-carol-2026",
+        "title": "A Christmas Carol",
+        "subtitle": "2026 Modern All-Ages Edition",
+        "author": {
+          "name": "Charles Dickens"
+        },
+        "language": "en",
+        "modified": "2026-11-17T04:41:18Z"
+      },
+      "links": [
+        {
+          "rel": "alternate",
+          "href": "https://read.opuslibrary.com/reader.html?book=christmas-carol-2026",
+          "type": "text/html"
+        },
+        {
+          "rel": "self",
+          "href": "https://read.opuslibrary.com/api/w3c/christmas-carol-2026/manifest.json",
+          "type": "application/webpub+json"
+        },
+        {
+          "rel": "http://opds-spec.org/acquisition",
+          "href": "https://github.com/jwendyr/christmas-carol-2026/raw/main/dist/christmas-carol-2026-word-by-word.epub",
+          "type": "application/epub+zip"
+        }
+      ],
+      "images": [
+        {
+          "href": "https://read.opuslibrary.com/books/christmas-carol-2026/cover.jpg",
+          "type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "@type": "http://schema.org/Book",
+        "identifier": "urn:opuslibrary:book:alice-in-wonderland-2026",
+        "title": "Alice\u2019s Adventures in Wonderland",
+        "subtitle": "2026 Modern All-Ages Edition",
+        "author": {
+          "name": "Lewis Carroll"
+        },
+        "language": "en",
+        "modified": "2026-11-17T04:41:18Z"
+      },
+      "links": [
+        {
+          "rel": "alternate",
+          "href": "https://read.opuslibrary.com/reader.html?book=alice-in-wonderland-2026",
+          "type": "text/html"
+        },
+        {
+          "rel": "self",
+          "href": "https://read.opuslibrary.com/api/w3c/alice-in-wonderland-2026/manifest.json",
+          "type": "application/webpub+json"
+        },
+        {
+          "rel": "http://opds-spec.org/acquisition",
+          "href": "https://github.com/jwendyr/alice-in-wonderland-2026/raw/main/dist/alice-in-wonderland-2026-word-by-word.epub",
+          "type": "application/epub+zip"
+        }
+      ],
+      "images": [
+        {
+          "href": "https://read.opuslibrary.com/books/alice-in-wonderland-2026/cover.jpg",
+          "type": "image/jpeg"
+        }
+      ]
+    }
+  ]
+}
